@@ -1,0 +1,5 @@
+{
+  "runtime": "node",
+  "entry": "%APPDATA%\\npm\\node_modules\\openclaw\\openclaw.mjs",
+  "env": {}
+}

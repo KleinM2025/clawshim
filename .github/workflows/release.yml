@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+      - name: Build windows binaries
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          PKG=github.com/KleinM2025/clawshim/internal/buildinfo
+          LDFLAGS="-s -w -X ${PKG}.Version=${VERSION} -X ${PKG}.Commit=${COMMIT} -X ${PKG}.Date=${DATE}"
+          mkdir -p dist
+          for arch in amd64 arm64; do
+            mkdir -p "dist/${arch}"
+            GOOS=windows GOARCH=${arch} CGO_ENABLED=0 go build -trimpath -ldflags "${LDFLAGS}" \
+              -o "dist/${arch}/openclaw.exe" ./cmd/clawshim
+            cp README.md clawshim.json.example "dist/${arch}/"
+            (cd "dist/${arch}" && zip -q "../clawshim_${VERSION}_windows_${arch}.zip" \
+              openclaw.exe README.md clawshim.json.example)
+          done
+          (cd dist && sha256sum clawshim_*.zip > checksums.txt)
+          ls -la dist
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/clawshim_*.zip
+            dist/checksums.txt
+          generate_release_notes: true

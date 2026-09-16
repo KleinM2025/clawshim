@@ -1,0 +1,4 @@
+/dist/
+/clawshim.json
+*.exe
+*.log
